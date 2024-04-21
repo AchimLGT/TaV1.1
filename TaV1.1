@@ -1,55 +1,38 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local iup = require("iup")
 
-local Window = Library.CreateLib("Ta Hub V1.1", "Sentinel")
+-- Function to handle button click
+local function on_button_click()
+    label.title = "Hello, GUI!"
+end
 
-local JJ = Window:NewTab("Jumper Jack")
+-- Create a label widget
+local label = iup.label{
+    title = "Click the button below!",
+    padding = "20x20"
+}
 
-local JJHub = JJ:NewSection("JJ")
+-- Create a button widget
+local button = iup.button{
+    title = "Click Me!",
+    action = on_button_click
+}
 
-JJ:NewButton("5", "JumperJack", function()
-    local messages = {
-        "BİR",
-        "İKİ",
-        "ÜÇ",
-        "DÖRT",
-        "BEŞ"
-    }
-    local interval = 2.20  -- Time interval between messages in seconds
-    
-    local function SendNextMessage()
-        local message = messages[1]
-        if message then
-            game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
-            table.remove(messages, 1)
-        end
-    end
-    
-    while #messages > 0 do
-        SendNextMessage()
-        wait(interval)
-    end
-end)
+-- Create a horizontal box to arrange widgets
+local hbox = iup.hbox{
+    label,
+    button,
+    alignment = "ACENTER",
+    margin = "20x20",
+}
 
-JJ:NewButton("10", "JumperJack", function()
-    local messages = {
-        "ALTI",
-        "YEDİ",
-        "SEKİZ",
-        "DOKUZ",
-        "ON"
-    }
-    local interval = 2.20  -- Time interval between messages in seconds
-    
-    local function SendNextMessage()
-        local message = messages[1]
-        if message then
-            game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
-            table.remove(messages, 1)
-        end
-    end
-    
-    while #messages > 0 do
-        SendNextMessage()
-        wait(interval)
-    end
-end)
+-- Create a dialog containing the box layout
+local dlg = iup.dialog{
+    hbox,
+    title = "Simple GUI Example",
+    size = "300x100",
+    margin = "20x20",
+}
+
+-- Show the dialog and start the main loop
+dlg:showxy(iup.CENTER, iup.CENTER)
+iup.MainLoop()
