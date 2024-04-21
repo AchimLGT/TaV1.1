@@ -1,0 +1,69 @@
+local Mercury = loadstring(game:HttpGet("https://raw.githubusercontent.com/deeeity/mercury-lib/master/src.lua"))()
+
+local GUI = Mercury:Create{
+    Name = "Ta V1.6",
+    Size = UDim2.fromOffset(600, 400),
+    Theme = Mercury.Themes.Dark,
+    Link = "https://discord.gg/UxAGeN6aZe"
+}
+
+local OtoJJ = GUI:Tab{
+	Name = "Jumper Jack",
+	Icon = "rbxassetid://8569322835"
+}
+
+OtoJJ:Button{
+	Name = "5",
+	Description = nil,
+	Callback = function() 
+        local messages = {
+            "BİR",
+            "İKİ",
+            "ÜÇ",
+            "DÖRT",
+            "BEŞ"
+        }
+        local interval = 1.5  -- Time interval between messages in seconds
+        
+        local function SendNextMessage()
+            local message = messages[1]
+            if message then
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+                table.remove(messages, 1)
+            end
+        end
+        
+        while #messages > 0 do
+            SendNextMessage()
+            wait(interval)
+        end
+    end
+}
+
+OtoJJ:Button{
+	Name = "5",
+	Description = nil,
+	Callback = function() 
+        local messages = {
+            "ALTI",
+            "YEDİ",
+            "SEKİZ",
+            "DOKUZ",
+            "ON"
+        }
+        local interval = 1.5  -- Time interval between messages in seconds
+        
+        local function SendNextMessage()
+            local message = messages[1]
+            if message then
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+                table.remove(messages, 1)
+            end
+        end
+        
+        while #messages > 0 do
+            SendNextMessage()
+            wait(interval)
+        end
+    end
+}
