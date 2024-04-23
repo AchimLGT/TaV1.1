@@ -539,7 +539,7 @@ local function sendMessage(startIndex)
     while currentMessageIndex <= #messages do
         if not isPaused then
             SayMessageRequest:FireServer(messages[currentMessageIndex], "All")
-            wait(1)
+            wait(1.8)
             currentMessageIndex = currentMessageIndex + 1
         else
             wait(0.1)
