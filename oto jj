@@ -1,8 +1,12 @@
 -- Oyunun Player ve Character objelerine erişim için gerekli değişkenler
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
 local TextChatService = game:GetService("TextChatService")
+
+-- Humanoid'i dinamik olarak güncelleyen fonksiyon
+local function getHumanoid()
+    local character = player.Character or player.CharacterAdded:Wait()
+    return character:WaitForChild("Humanoid")
+end
 
 -- GUI oluşturma
 local ScreenGui = Instance.new("ScreenGui")
@@ -11,8 +15,8 @@ ScreenGui.Name = "JumperJackGui"
 
 -- Ana çerçeve (Frame) oluşturma ve sürükleme özelliği ekleme
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 150)
-Frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+Frame.Size = UDim2.new(0, 200, 0, 180)
+Frame.Position = UDim2.new(0.5, -100, 0.5, -90)
 Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 Frame.BorderSizePixel = 0
 Frame.Parent = ScreenGui
@@ -53,20 +57,30 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
--- TextBox oluşturma
-local TextBox = Instance.new("TextBox")
-TextBox.Size = UDim2.new(0, 150, 0, 30)
-TextBox.Position = UDim2.new(0.5, -75, 0, 20)
-TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-TextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
-TextBox.PlaceholderText = "Sayı gir (örn: 50)"
-TextBox.Text = ""
-TextBox.Parent = Frame
+-- Bitiş sayısı için TextBox
+local EndTextBox = Instance.new("TextBox")
+EndTextBox.Size = UDim2.new(0, 150, 0, 30)
+EndTextBox.Position = UDim2.new(0.5, -75, 0, 50)
+EndTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+EndTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+EndTextBox.PlaceholderText = "Bitiş sayısı (örn: 50)"
+EndTextBox.Text = ""
+EndTextBox.Parent = Frame
+
+-- Başlangıç sayısı için TextBox
+local StartTextBox = Instance.new("TextBox")
+StartTextBox.Size = UDim2.new(0, 150, 0, 30)
+StartTextBox.Position = UDim2.new(0.5, -75, 0, 20)
+StartTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+StartTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+StartTextBox.PlaceholderText = "Başlangıç (opsiyonel, örn: 25)"
+StartTextBox.Text = ""
+StartTextBox.Parent = Frame
 
 -- Zıpla butonu oluşturma
 local StartButton = Instance.new("TextButton")
 StartButton.Size = UDim2.new(0, 100, 0, 40)
-StartButton.Position = UDim2.new(0.25, -50, 0, 80)
+StartButton.Position = UDim2.new(0.25, -50, 0, 110)
 StartButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 StartButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 StartButton.Text = "Zıpla!"
@@ -75,7 +89,7 @@ StartButton.Parent = Frame
 -- Durdur/Devam Et butonu oluşturma
 local PauseButton = Instance.new("TextButton")
 PauseButton.Size = UDim2.new(0, 100, 0, 40)
-PauseButton.Position = UDim2.new(0.75, -50, 0, 80)
+PauseButton.Position = UDim2.new(0.75, -50, 0, 110)
 PauseButton.BackgroundColor3 = Color3.fromRGB(215, 120, 0)
 PauseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 PauseButton.Text = "Durdur"
@@ -128,16 +142,17 @@ local currentIndex = 1
 local targetNumber = 0
 
 -- Zıplama döngüsünü kontrol eden fonksiyon
-local function jumpLoop()
-    for i = currentIndex, targetNumber do
+local function jumpLoop(startNum, endNum)
+    for i = startNum, endNum do
         if not isRunning then break end
         while isPaused do
             wait(0.1) -- Durdurulduğunda bekle
         end
+        local humanoid = getHumanoid() -- Her adımda güncel humanoid al
         local message = numberToText(i)
         sendChatMessage(message)
-        if humanoid then
-            humanoid.Jump = true
+        if humanoid and humanoid.Health > 0 then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         end
         local charCount = utf8.len(message)
         local waitTime = 0.5 + (charCount * 0.25)
@@ -166,18 +181,35 @@ end)
 
 -- Zıpla butonu mantığı
 StartButton.MouseButton1Click:Connect(function()
-    local input = tonumber(TextBox.Text)
-    if input and input > 0 and not isRunning then
+    local endInput = tonumber(EndTextBox.Text)
+    local startInput = tonumber(StartTextBox.Text) or 1 -- Varsayılan olarak 1
+    
+    if endInput and endInput > 0 then
+        if startInput >= endInput then
+            EndTextBox.Text = "Bitiş sayısı başlangıçtan büyük olmalı!"
+            wait(1)
+            EndTextBox.Text = ""
+            return
+        end
+        
+        -- Her zaman sıfırdan başlaması için durumu sıfırla
         isRunning = true
         isPaused = false
-        targetNumber = input
-        currentIndex = 1
+        targetNumber = endInput
+        currentIndex = startInput -- Her zaman başlangıç sayısına sıfırlanır
         PauseButton.Text = "Durdur"
-        spawn(jumpLoop) -- Ayrı bir iş parçacığında döngüyü başlat
-    elseif not input or input <= 0 then
-        TextBox.Text = "Lütfen geçerli bir sayı gir!"
+        
+        -- Mevcut döngüyü durdur ve yenisini başlat
+        if isRunning then
+            isRunning = false -- Önceki döngüyü sonlandır
+            wait(0.1) -- Kısa bir bekleme, önceki döngünün tamamen durmasını sağlar
+        end
+        isRunning = true
+        spawn(function() jumpLoop(startInput, endInput) end) -- Yeni döngü başlat
+    elseif not endInput or endInput <= 0 then
+        EndTextBox.Text = "Lütfen geçerli bir bitiş sayısı gir!"
         wait(1)
-        TextBox.Text = ""
+        EndTextBox.Text = ""
     end
 end)
 
@@ -189,3 +221,8 @@ Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Text = "Jumper Jack"
 Title.Parent = Frame
+
+-- Karakter yeniden doğduğunda humanoid'i güncelle
+player.CharacterAdded:Connect(function(character)
+    -- getHumanoid() zaten dinamik olarak güncel alıyor
+end)
