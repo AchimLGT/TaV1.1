@@ -1,0 +1,191 @@
+-- Oyunun Player ve Character objelerine erişim için gerekli değişkenler
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local TextChatService = game:GetService("TextChatService")
+
+-- GUI oluşturma
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+ScreenGui.Name = "JumperJackGui"
+
+-- Ana çerçeve (Frame) oluşturma ve sürükleme özelliği ekleme
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 200, 0, 150)
+Frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+
+-- Sürükleme için yardımcı değişkenler
+local dragging = false
+local dragInput, dragStart, startPos
+
+Frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Frame.Position
+    end
+end)
+
+Frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+Frame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        Frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- TextBox oluşturma
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(0, 150, 0, 30)
+TextBox.Position = UDim2.new(0.5, -75, 0, 20)
+TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextBox.PlaceholderText = "Sayı gir (örn: 50)"
+TextBox.Text = ""
+TextBox.Parent = Frame
+
+-- Zıpla butonu oluşturma
+local StartButton = Instance.new("TextButton")
+StartButton.Size = UDim2.new(0, 100, 0, 40)
+StartButton.Position = UDim2.new(0.25, -50, 0, 80)
+StartButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+StartButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartButton.Text = "Zıpla!"
+StartButton.Parent = Frame
+
+-- Durdur/Devam Et butonu oluşturma
+local PauseButton = Instance.new("TextButton")
+PauseButton.Size = UDim2.new(0, 100, 0, 40)
+PauseButton.Position = UDim2.new(0.75, -50, 0, 80)
+PauseButton.BackgroundColor3 = Color3.fromRGB(215, 120, 0)
+PauseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PauseButton.Text = "Durdur"
+PauseButton.Parent = Frame
+
+-- Sayıları Türkçe olarak yazıya çevirme fonksiyonu
+local function numberToText(num)
+    local birler = {"", "BİR", "İKİ", "ÜÇ", "DÖRT", "BEŞ", "ALTI", "YEDİ", "SEKİZ", "DOKUZ"}
+    local onlar = {"", "ON", "YİRMİ", "OTUZ", "KIRK", "ELLİ", "ALTMIŞ", "YETMİŞ", "SEKSEN", "DOKSAN"}
+    
+    if num == 0 then return "SIFIR" end
+    if num <= 9 then return birler[num + 1] end
+    if num == 10 then return "ON" end
+    
+    local on = math.floor(num / 10)
+    local bir = num % 10
+    if bir == 0 then
+        return onlar[on + 1]
+    else
+        return onlar[on + 1] .. " " .. birler[bir + 1]
+    end
+end
+
+-- Mesaj gönderme fonksiyonu
+local function sendChatMessage(message)
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        local textChannels = TextChatService:WaitForChild("TextChannels", 5)
+        if textChannels then
+            local textChannel = textChannels:WaitForChild("RBXGeneral", 5)
+            if textChannel then
+                textChannel:SendAsync(message)
+                return
+            end
+        end
+    end
+    
+    local chatEvent = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
+    if chatEvent and chatEvent:FindFirstChild("SayMessageRequest") then
+        chatEvent.SayMessageRequest:FireServer(message, "All")
+        return
+    end
+    
+    print("Chat sistemi kullanılamıyor, mesaj yerel olarak yazdırıldı: " .. message)
+end
+
+-- Durum kontrol değişkenleri
+local isPaused = false
+local isRunning = false
+local currentIndex = 1
+local targetNumber = 0
+
+-- Zıplama döngüsünü kontrol eden fonksiyon
+local function jumpLoop()
+    for i = currentIndex, targetNumber do
+        if not isRunning then break end
+        while isPaused do
+            wait(0.1) -- Durdurulduğunda bekle
+        end
+        local message = numberToText(i)
+        sendChatMessage(message)
+        if humanoid then
+            humanoid.Jump = true
+        end
+        local charCount = utf8.len(message)
+        local waitTime = 0.5 + (charCount * 0.25)
+        wait(waitTime)
+        currentIndex = i + 1
+    end
+    if not isPaused then
+        isRunning = false
+        currentIndex = 1
+        PauseButton.Text = "Durdur"
+    end
+end
+
+-- Durdur/Devam Et butonu mantığı
+PauseButton.MouseButton1Click:Connect(function()
+    if isRunning then
+        if isPaused then
+            isPaused = false
+            PauseButton.Text = "Durdur"
+        else
+            isPaused = true
+            PauseButton.Text = "Devam Et"
+        end
+    end
+end)
+
+-- Zıpla butonu mantığı
+StartButton.MouseButton1Click:Connect(function()
+    local input = tonumber(TextBox.Text)
+    if input and input > 0 and not isRunning then
+        isRunning = true
+        isPaused = false
+        targetNumber = input
+        currentIndex = 1
+        PauseButton.Text = "Durdur"
+        spawn(jumpLoop) -- Ayrı bir iş parçacığında döngüyü başlat
+    elseif not input or input <= 0 then
+        TextBox.Text = "Lütfen geçerli bir sayı gir!"
+        wait(1)
+        TextBox.Text = ""
+    end
+end)
+
+-- GUI'nin üstünde bir başlık ekleyelim
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 200, 0, 20)
+Title.Position = UDim2.new(0, 0, 0, 0)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "Jumper Jack"
+Title.Parent = Frame
